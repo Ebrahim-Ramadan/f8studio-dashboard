@@ -3,7 +3,14 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Architect Office Admin",
-  description: "Manage architectural office projects, images, and descriptions."
+  description: "Manage architectural office projects, images, and descriptions.",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.png",
+    apple: "/apple.png" 
+  },
+
+
 };
 
 export default function RootLayout({

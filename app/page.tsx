@@ -4,16 +4,18 @@ export default function Page() {
   return (
     <main className="shell">
       <section className="hero">
-        <div>
+        <div className="hero-brand">
           <p className="eyebrow">Architectural office</p>
-          {/* <h1>Project admin dashboard</h1> */}
-          <img  src="/logo.jpeg" alt="logo" width="200" height="200" className="rounded-full" />
+          <img
+            src="/logo.jpeg"
+            alt="Architectural office logo"
+            width="200"
+            height="200"
+            className="hero-logo"
+          />
         </div>
-        <div className="hero-card">
-          <span>Built for the team</span>
-          <strong>Project admin dashboard</strong>
-          <p>Fast editing, easy updates, and no extra login setup needed.</p>
-        </div>
+                 <img src="/OIP.png" alt="Architectural office logo" width="200" height="200" className="house3d" />
+
       </section>
 
       <Dashboard />

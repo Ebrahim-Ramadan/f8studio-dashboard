@@ -55,11 +55,30 @@ textarea {
 }
 
 .hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.7fr);
-  gap: 20px;
-  align-items: stretch;
-  margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    justify-items: center;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.hero-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 14px;
+  min-height: 100%;
+}
+
+.hero-logo {
+  display: block;
+  width: 200px;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 9999px;
+  border: 1px solid rgba(168, 198, 255, 0.14);
+  box-shadow: var(--shadow);
 }
 
 .eyebrow {
@@ -103,8 +122,8 @@ h1 {
   padding: 24px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  /* gap: 14px; */
+  justify-content: flex-start;
+  gap: 10px;
 }
 
 .hero-card span,
@@ -116,13 +135,13 @@ h1 {
 
 .hero-card strong {
   font-size: 1.25rem;
-  /* line-height: 1.35; */
+  line-height: 1.35;
 }
 
 .hero-card p {
   margin: 0;
   color: var(--muted);
-  /* line-height: 1.6; */
+  line-height: 1.6;
 }
 
 .dashboard {
@@ -157,8 +176,16 @@ h1 {
 
 .stat strong {
   display: block;
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   margin-top: 8px;
+}
+
+.stat-status.loading {
+  color: var(--text);
+}
+
+.stat-status.ready {
+  color: var(--success);
 }
 
 .actions {
@@ -171,6 +198,7 @@ h1 {
   border: 1px solid transparent;
   border-radius: 14px;
   padding: 0.9rem 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -397,7 +425,10 @@ h1 {
   padding: 24px;
   color: var(--muted);
 }
-
+.loading-state{
+    /* horizontally center */
+    text-align: center;
+}
 .empty-state strong,
 .error-state strong {
   color: var(--text);
@@ -421,13 +452,41 @@ h1 {
 
 @media (max-width: 920px) {
   .hero,
-  .field-grid,
-  .stats {
+  .field-grid {
     grid-template-columns: 1fr;
+  }
+
+  .hero-brand {
+    align-items: center;
+    text-align: center;
   }
 }
 
 @media (max-width: 640px) {
+  .hero .house3d {
+    display: none;
+  }
+
+  .stats {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .stat {
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .stat span {
+    font-size: 0.72rem;
+  }
+
+  .stat strong {
+    font-size: 1.15rem;
+    margin-top: 4px;
+  }
+
   .shell {
     width: min(100% - 20px, 1200px);
     padding-top: 20px;
@@ -443,13 +502,42 @@ h1 {
     align-items: stretch;
   }
 
-  .actions,
+  .toolbar .actions,
   .form-actions {
     width: 100%;
   }
 
-  .btn {
+  .toolbar .actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .toolbar .actions .btn,
+  .form-actions .btn {
     width: 100%;
     justify-content: center;
+    font-size: 0.82rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 12px;
+  }
+
+  .toolbar .actions .btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .project-footer .actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .project-footer .actions .btn {
+    width: 100%;
+    font-size: 0.8rem;
+    padding: 0.6rem 0.65rem;
+    border-radius: 12px;
   }
 }

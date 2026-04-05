@@ -351,7 +351,9 @@ export function Dashboard() {
           </div>
           <div className="stat">
             <span>Status</span>
-            <strong>{loading ? "Loading" : "Ready"}</strong>
+            <strong className={loading ? "stat-status loading" : "stat-status ready"}>
+              {loading ? "Loading" : "Ready"}
+            </strong>
           </div>
         </div>
 
@@ -369,7 +371,9 @@ export function Dashboard() {
         {/* <div className="section-label">Projects</div> */}
 
         {loading ? (
-          <div className="loading-state">Loading projects…</div>
+          <div className="loading-state">
+Loading...
+          </div>
         ) : projects.length === 0 ? (
           <div className="empty-state">
             <strong>No projects yet.</strong>
