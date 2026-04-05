@@ -5,6 +5,8 @@ import { Plus, Pencil, Trash2, X, RefreshCcw } from "lucide-react";
 import { ProjectImage, ProjectRecord } from "@/lib/types";
 import { compressImage } from "@/lib/image-compression";
 
+const ADMIN_PASSWORD = "admin1passwd";
+
 type ProjectImagePayload =
   | { id: string; filename: string; mimeType: string }
   | { filename: string; mimeType: string; dataBase64: string };
@@ -26,6 +28,11 @@ type EditorState = {
   images: ProjectImage[];
   pendingFiles: DraftImage[];
 };
+
+type PendingAction =
+  | { type: "create" }
+  | { type: "edit"; project: ProjectRecord }
+  | { type: "delete"; projectId: string };
 
 const emptyEditor = (): EditorState => ({
   mode: "create",
@@ -59,6 +66,9 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [editor, setEditor] = useState<EditorState | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminPasswordError, setAdminPasswordError] = useState("");
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
@@ -78,6 +88,18 @@ export function Dashboard() {
     () => projects.reduce((count, project) => count + project.images.length, 0),
     [projects]
   );
+
+  function openAdminPasswordModal(action: PendingAction) {
+    setPendingAction(action);
+    setAdminPassword("");
+    setAdminPasswordError("");
+  }
+
+  function closeAdminPasswordModal() {
+    setPendingAction(null);
+    setAdminPassword("");
+    setAdminPasswordError("");
+  }
 
   async function loadProjects() {
     try {
@@ -119,6 +141,46 @@ export function Dashboard() {
       images: project.images,
       pendingFiles: []
     });
+  }
+
+  function requestCreate() {
+    openAdminPasswordModal({ type: "create" });
+  }
+
+  function requestEdit(project: ProjectRecord) {
+    openAdminPasswordModal({ type: "edit", project });
+  }
+
+  function requestDelete(projectId: string) {
+    openAdminPasswordModal({ type: "delete", projectId });
+  }
+
+  async function confirmAdminPassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (adminPassword !== ADMIN_PASSWORD) {
+      setAdminPasswordError("Incorrect password.");
+      return;
+    }
+
+    const action = pendingAction;
+    closeAdminPasswordModal();
+
+    if (!action) return;
+
+    if (action.type === "create") {
+      openCreate();
+      return;
+    }
+
+    if (action.type === "edit") {
+      openEdit(action.project);
+      return;
+    }
+
+    if (action.type === "delete") {
+      await deleteProject(action.projectId);
+    }
   }
 
   function closeEditor() {
@@ -259,9 +321,6 @@ export function Dashboard() {
   }
 
   async function deleteProject(id: string) {
-    const confirmed = window.confirm("Delete this project and its images?");
-    if (!confirmed) return;
-
     try {
       setDeletingId(id);
       const response = await fetch(`/api/projects/${id}`, { method: "DELETE" });
@@ -300,7 +359,7 @@ export function Dashboard() {
           <button className="btn btn-ghost" onClick={refreshProjects} type="button">
             <RefreshCcw size={16} /> {refreshing ? "Refreshing" : "Refresh"}
           </button>
-          <button className="btn btn-primary" onClick={openCreate} type="button">
+          <button className="btn btn-primary" onClick={requestCreate} type="button">
             <Plus size={16} /> New project
           </button>
         </div>
@@ -337,14 +396,14 @@ export function Dashboard() {
                       <button
                         className="btn btn-ghost"
                         type="button"
-                        onClick={() => openEdit(project)}
+                        onClick={() => requestEdit(project)}
                       >
                         <Pencil size={16} /> Edit
                       </button>
                       <button
                         className="btn btn-danger gap-2"
                         type="button"
-                        onClick={() => void deleteProject(project.id)}
+                        onClick={() => requestDelete(project.id)}
                         disabled={deletingId === project.id}
                       >
                         <Trash2 size={16} />
@@ -486,6 +545,58 @@ export function Dashboard() {
                 </button>
                 <button className="btn btn-primary" type="submit" disabled={saving}>
                   {saving ? "Saving…" : editor.mode === "create" ? "Create project" : "Update project"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {pendingAction ? (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onClick={closeAdminPasswordModal}
+        >
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div>
+                <div className="section-label">Admin access</div>
+                <h2>Password required</h2>
+              </div>
+              <button className="btn btn-ghost" type="button" onClick={closeAdminPasswordModal}>
+                <X size={16} /> Close
+              </button>
+            </div>
+
+            <form className="form-grid" onSubmit={confirmAdminPassword}>
+              <div className="field">
+                <label htmlFor="admin-password">Admin password</label>
+                <input
+                  id="admin-password"
+                  type="password"
+                  value={adminPassword}
+                  onChange={(event) => {
+                    setAdminPassword(event.target.value);
+                    if (adminPasswordError) setAdminPasswordError("");
+                  }}
+                  placeholder="Enter admin password"
+                  autoFocus
+                />
+                {adminPasswordError ? <p className="help" style={{ color: "#ffb3b3" }}>{adminPasswordError}</p> : null}
+              </div>
+
+              <div className="form-actions">
+                <button className="btn btn-ghost" type="button" onClick={closeAdminPasswordModal}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" type="submit">
+                  Continue
                 </button>
               </div>
             </form>
