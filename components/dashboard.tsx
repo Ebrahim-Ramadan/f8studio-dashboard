@@ -5,7 +5,7 @@ import { Plus, Pencil, Trash2, X, RefreshCcw } from "lucide-react";
 import { ProjectImage, ProjectRecord } from "@/lib/types";
 import { compressImage } from "@/lib/image-compression";
 
-const ADMIN_PASSWORD = "admin1passwd";
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
 
 type ProjectImagePayload =
   | { id: string; filename: string; mimeType: string }
