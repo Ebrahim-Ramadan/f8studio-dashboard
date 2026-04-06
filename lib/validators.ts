@@ -20,3 +20,11 @@ export const projectSchema = z.object({
   createdAt: z.string().datetime({ offset: true }).optional(),
   images: z.array(projectImageInputSchema).min(1, "At least one image is required")
 });
+
+export const contactSubmissionSchema = z.object({
+  fullName: z.string().trim().min(1, "Full name is required").max(150),
+  email: z.string().trim().email("Valid email is required").max(255),
+  phone: z.string().trim().max(50).optional(),
+  projectType: z.string().trim().max(120).optional(),
+  message: z.string().trim().min(1, "Message is required").max(10000)
+});

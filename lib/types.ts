@@ -35,3 +35,29 @@ export type ProjectUpsertPayload = {
   createdAt?: string;
   images: ProjectImageInput[];
 };
+
+export type ContactSubmission = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  projectType: string | null;
+  message: string;
+  createdAt: string;
+};
+
+export type SubmissionsResponse = {
+  submissions: ContactSubmission[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type ProjectsResponse = {
+  projects: ProjectRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};

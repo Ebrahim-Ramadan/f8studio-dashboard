@@ -30,6 +30,29 @@ export function ensureSchema() {
           created_at timestamptz NOT NULL DEFAULT now()
         );
       `);
+
+      await query(`
+        CREATE TABLE IF NOT EXISTS contact_submissions (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          full_name varchar(150) NOT NULL,
+          email varchar(255) NOT NULL,
+          phone varchar(50),
+          project_type varchar(120),
+          message text NOT NULL,
+          created_at timestamptz NOT NULL DEFAULT now()
+        );
+      `);
+
+      // Create indexes for better query performance
+      await query(`
+        CREATE INDEX IF NOT EXISTS idx_contact_submissions_created_at 
+        ON contact_submissions(created_at DESC);
+      `);
+
+      await query(`
+        CREATE INDEX IF NOT EXISTS idx_contact_submissions_email 
+        ON contact_submissions(email);
+      `);
     })();
   }
 

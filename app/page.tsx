@@ -1,18 +1,18 @@
 import { Dashboard } from "@/components/dashboard";
-import { listProjectsWithPreview } from "@/lib/projects";
+import { listProjectsWithPaginationAndPreview } from "@/lib/projects";
 import { ensureSchema } from "@/lib/schema";
-import { ProjectRecord } from "@/lib/types";
+import { ProjectsResponse } from "@/lib/types";
 
 export default async function Page() {
-  let initialProjects: ProjectRecord[] = [];
+  let initialData: ProjectsResponse | null = null;
   let initialLoaded = false;
 
   try {
     await ensureSchema();
-    initialProjects = await listProjectsWithPreview(2);
+    initialData = await listProjectsWithPaginationAndPreview(1, 6, 2);
     initialLoaded = true;
   } catch {
-    initialProjects = [];
+    initialData = null;
     initialLoaded = false;
   }
 
@@ -29,11 +29,10 @@ export default async function Page() {
             className="hero-logo"
           />
         </div>
-                 <img src="/OIP.png" alt="Architectural office logo" width="200" height="200" className="house3d" />
-
+        <img src="/OIP.png" alt="Architectural office logo" width="200" height="200" className="house3d" />
       </section>
 
-      <Dashboard initialProjects={initialProjects} initialLoaded={initialLoaded} />
+      <Dashboard initialData={initialData} initialLoaded={initialLoaded} />
     </main>
   );
 }

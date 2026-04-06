@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, X, RefreshCcw, UploadCloud } from "lucide-react";
-import { ProjectImage, ProjectRecord } from "@/lib/types";
+import { Plus, Pencil, Trash2, X, RefreshCcw, UploadCloud, ChevronLeft, ChevronRight } from "lucide-react";
+import { ProjectImage, ProjectRecord, ProjectsResponse } from "@/lib/types";
 import { compressImage } from "@/lib/image-compression";
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
@@ -64,15 +64,17 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 export function Dashboard({
-  initialProjects,
+  initialData,
   initialLoaded
 }: {
-  initialProjects: ProjectRecord[];
+  initialData: ProjectsResponse | null;
   initialLoaded: boolean;
 }) {
-  const [projects, setProjects] = useState<ProjectRecord[]>(initialProjects);
+  const [data, setData] = useState<ProjectsResponse | null>(initialData);
   const [loading, setLoading] = useState(!initialLoaded);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 6;
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [adminPassword, setAdminPassword] = useState("");
@@ -83,13 +85,42 @@ export function Dashboard({
   const [adminActionLoading, setAdminActionLoading] = useState(false);
   const [toast, setToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
+  const projects = data?.projects ?? [];
+  const totalPages = data?.totalPages ?? 1;
+
   useEffect(() => {
     if (!initialLoaded) {
-      void loadProjects();
+      void loadProjects(1);
     }
     // Intentionally run only once during hydration.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (currentPage === 1) return;
+
+    const loadPage = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(
+          `/api/projects?page=${currentPage}&pageSize=${pageSize}&previewImages=2`,
+          { cache: "no-store" }
+        );
+        if (!response.ok) throw new Error("Failed to load projects.");
+        const json = (await response.json()) as ProjectsResponse;
+        setData(json);
+      } catch (error) {
+        setToast({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unable to load projects."
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadPage();
+  }, [currentPage]);
 
   useEffect(() => {
     if (!toast) return;
@@ -117,13 +148,15 @@ export function Dashboard({
     setAdminPasswordError("");
   }
 
-  async function loadProjects() {
+  async function loadProjects(page: number = 1) {
     try {
       setLoading(true);
-      const response = await fetch("/api/projects?previewImages=2", { cache: "no-store" });
+      const response = await fetch(`/api/projects?page=${page}&pageSize=${pageSize}&previewImages=2`, {
+        cache: "no-store"
+      });
       if (!response.ok) throw new Error("Failed to load projects.");
-      const data = (await response.json()) as ProjectRecord[];
-      setProjects(data);
+      const json = (await response.json()) as ProjectsResponse;
+      setData(json);
     } catch (error) {
       setToast({
         kind: "error",
@@ -137,7 +170,8 @@ export function Dashboard({
   async function refreshProjects() {
     try {
       setRefreshing(true);
-      await loadProjects();
+      setCurrentPage(1);
+      await loadProjects(1);
       setToast({ kind: "success", message: "Projects refreshed." });
     } finally {
       setRefreshing(false);
@@ -349,7 +383,7 @@ export function Dashboard({
 
       editor.pendingFiles.forEach((item) => URL.revokeObjectURL(item.previewUrl));
       setEditor(null);
-      await loadProjects();
+      await loadProjects(currentPage);
       setToast({
         kind: "success",
         message: editor.mode === "create" ? "Project created." : "Project updated."
@@ -369,7 +403,7 @@ export function Dashboard({
       setDeletingId(id);
       const response = await fetch(`/api/projects/${id}`, { method: "DELETE" });
       if (!response.ok) throw new Error("Unable to delete project.");
-      await loadProjects();
+      await loadProjects(currentPage);
       setToast({ kind: "success", message: "Project deleted." });
     } catch (error) {
       setToast({
@@ -387,7 +421,7 @@ export function Dashboard({
         <div className="stats">
           <div className="stat">
             <span>Projects</span>
-            <strong>{projects.length}</strong>
+            <strong>{data?.total ?? 0}</strong>
           </div>
           <div className="stat">
             <span>Total images</span>
@@ -402,6 +436,9 @@ export function Dashboard({
         </div>
 
         <div className="actions">
+          <a href="/submissions" className="btn btn-ghost" style={{ textDecoration: 'none' }}>
+            📬 Submissions
+          </a>
           <button className="btn btn-ghost" onClick={refreshProjects} type="button">
             <RefreshCcw size={16} /> {refreshing ? "Refreshing" : "Refresh"}
           </button>
@@ -463,6 +500,59 @@ Loading...
                 </div>
               </article>
             ))}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && projects.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginTop: "2rem",
+              padding: "1.5rem",
+              borderRadius: "12px",
+              border: "1px solid rgba(98, 133, 202, 0.26)",
+              background: "linear-gradient(180deg, rgba(23, 31, 51, 0.5), rgba(14, 19, 31, 0.7))"
+            }}
+          >
+            <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+              <button
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="btn btn-ghost"
+                style={{
+                  opacity: currentPage === 1 ? 0.5 : 1,
+                  cursor: currentPage === 1 ? "not-allowed" : "pointer"
+                }}
+              >
+                <ChevronLeft size={16} />
+                Previous
+              </button>
+
+              <span style={{ color: "#9cafcc", fontSize: "0.9rem" }}>
+                Page <strong style={{ color: "#f2f6ff" }}>{currentPage}</strong> of{" "}
+                <strong style={{ color: "#f2f6ff" }}>{totalPages}</strong>
+              </span>
+
+              <button
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage >= totalPages}
+                className="btn btn-ghost"
+                style={{
+                  opacity: currentPage >= totalPages ? 0.5 : 1,
+                  cursor: currentPage >= totalPages ? "not-allowed" : "pointer"
+                }}
+              >
+                Next
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            <div style={{ color: "#9cafcc", fontSize: "0.9rem" }}>
+              Total projects: <strong style={{ color: "#f2f6ff" }}>{data?.total ?? 0}</strong>
+            </div>
           </div>
         )}
       </div>

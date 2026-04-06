@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { ensureSchema } from "@/lib/schema";
-import { getProjectById, listProjectsWithPreview, normalizePreviewLimit } from "@/lib/projects";
+import { getProjectById, listProjectsWithPaginationAndPreview, normalizePreviewLimit } from "@/lib/projects";
 import { projectSchema } from "@/lib/validators";
 import { type NewImageInput, type ProjectImageInput } from "@/lib/types";
 
@@ -12,9 +12,13 @@ function newImagePayload(image: ProjectImageInput): image is NewImageInput {
 export async function GET(request: Request) {
   await ensureSchema();
   const { searchParams } = new URL(request.url);
+  const page = parseInt(searchParams.get("page") ?? "1", 10);
+  const pageSize = parseInt(searchParams.get("pageSize") ?? "6", 10);
   const previewLimit = normalizePreviewLimit(searchParams.get("previewImages"));
 
-  return NextResponse.json(await listProjectsWithPreview(previewLimit));
+  return NextResponse.json(
+    await listProjectsWithPaginationAndPreview(page, pageSize, previewLimit)
+  );
 }
 
 export async function POST(request: Request) {
