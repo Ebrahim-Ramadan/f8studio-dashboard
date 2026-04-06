@@ -436,9 +436,9 @@ export function Dashboard({
         </div>
 
         <div className="actions">
-          <a href="/submissions" className="btn btn-ghost" style={{ textDecoration: 'none' }}>
+          {/* <a href="/submissions" className="btn btn-ghost" style={{ textDecoration: 'none' }}>
             📬 Submissions
-          </a>
+          </a> */}
           <button className="btn btn-ghost" onClick={refreshProjects} type="button">
             <RefreshCcw size={16} /> {refreshing ? "Refreshing" : "Refresh"}
           </button>
@@ -508,30 +508,37 @@ Loading...
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              flexDirection: "column",
+              gap: "1rem",
               marginTop: "2rem",
-              padding: "1.5rem",
-              borderRadius: "12px",
+              padding: "1rem",
+              borderRadius: "20px",
               border: "1px solid rgba(98, 133, 202, 0.26)",
               background: "linear-gradient(180deg, rgba(23, 31, 51, 0.5), rgba(14, 19, 31, 0.7))"
             }}
           >
-            <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+            {/* Buttons Row */}
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", justifyContent: "center", flexWrap: "wrap" }}>
               <button
                 onClick={() => setCurrentPage(currentPage - 1)}
                 disabled={currentPage === 1}
                 className="btn btn-ghost"
                 style={{
                   opacity: currentPage === 1 ? 0.5 : 1,
-                  cursor: currentPage === 1 ? "not-allowed" : "pointer"
+                  cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                  fontSize: "0.85rem",
+                  padding: "0.5rem 0.75rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.25rem",
+                  whiteSpace: "nowrap"
                 }}
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={14} />
                 Previous
               </button>
 
-              <span style={{ color: "#9cafcc", fontSize: "0.9rem" }}>
+              <span style={{ color: "#9cafcc", fontSize: "0.85rem", textAlign: "center" }}>
                 Page <strong style={{ color: "#f2f6ff" }}>{currentPage}</strong> of{" "}
                 <strong style={{ color: "#f2f6ff" }}>{totalPages}</strong>
               </span>
@@ -542,16 +549,23 @@ Loading...
                 className="btn btn-ghost"
                 style={{
                   opacity: currentPage >= totalPages ? 0.5 : 1,
-                  cursor: currentPage >= totalPages ? "not-allowed" : "pointer"
+                  cursor: currentPage >= totalPages ? "not-allowed" : "pointer",
+                  fontSize: "0.85rem",
+                  padding: "0.5rem 0.75rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.25rem",
+                  whiteSpace: "nowrap"
                 }}
               >
                 Next
-                <ChevronRight size={16} />
+                <ChevronRight size={14} />
               </button>
             </div>
 
-            <div style={{ color: "#9cafcc", fontSize: "0.9rem" }}>
-              Total projects: <strong style={{ color: "#f2f6ff" }}>{data?.total ?? 0}</strong>
+            {/* Total Count Row */}
+            <div style={{ color: "#9cafcc", fontSize: "0.85rem", textAlign: "center" }}>
+              Total: <strong style={{ color: "#f2f6ff" }}>{data?.total ?? 0}</strong> project{(data?.total ?? 0) !== 1 ? "s" : ""}
             </div>
           </div>
         )}
