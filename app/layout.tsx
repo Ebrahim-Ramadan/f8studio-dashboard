@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Architect Office Admin",
+  title: "F8 Office Admin",
   description: "Manage architectural office projects, images, and descriptions.",
   icons: {
     icon: "/favicon.ico",
