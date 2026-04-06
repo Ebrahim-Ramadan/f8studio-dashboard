@@ -17,5 +17,6 @@ export const projectImageInputSchema = z.union([existingImageSchema, newImageSch
 export const projectSchema = z.object({
   name: z.string().trim().min(1, "Project name is required").max(140),
   description: z.string().trim().min(1, "Description is required").max(5000),
+  createdAt: z.string().datetime({ offset: true }).optional(),
   images: z.array(projectImageInputSchema).min(1, "At least one image is required")
 });

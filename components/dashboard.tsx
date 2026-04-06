@@ -25,19 +25,21 @@ type EditorState = {
   id?: string;
   name: string;
   description: string;
+  createdAt: string;
   images: ProjectImage[];
   pendingFiles: DraftImage[];
 };
 
 type PendingAction =
   | { type: "create" }
-  | { type: "edit"; project: ProjectRecord }
+  | { type: "edit"; projectId: string }
   | { type: "delete"; projectId: string };
 
 const emptyEditor = (): EditorState => ({
   mode: "create",
   name: "",
   description: "",
+  createdAt: new Date().toISOString().slice(0, 16),
   images: [],
   pendingFiles: []
 });
@@ -61,9 +63,15 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export function Dashboard() {
-  const [projects, setProjects] = useState<ProjectRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+export function Dashboard({
+  initialProjects,
+  initialLoaded
+}: {
+  initialProjects: ProjectRecord[];
+  initialLoaded: boolean;
+}) {
+  const [projects, setProjects] = useState<ProjectRecord[]>(initialProjects);
+  const [loading, setLoading] = useState(!initialLoaded);
   const [refreshing, setRefreshing] = useState(false);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
@@ -71,10 +79,16 @@ export function Dashboard() {
   const [adminPasswordError, setAdminPasswordError] = useState("");
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [loadingEditorProjectId, setLoadingEditorProjectId] = useState<string | null>(null);
+  const [adminActionLoading, setAdminActionLoading] = useState(false);
   const [toast, setToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
-    void loadProjects();
+    if (!initialLoaded) {
+      void loadProjects();
+    }
+    // Intentionally run only once during hydration.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -85,7 +99,7 @@ export function Dashboard() {
   }, [toast]);
 
   const totalImages = useMemo(
-    () => projects.reduce((count, project) => count + project.images.length, 0),
+    () => projects.reduce((count, project) => count + project.imageCount, 0),
     [projects]
   );
 
@@ -93,9 +107,11 @@ export function Dashboard() {
     setPendingAction(action);
     setAdminPassword("");
     setAdminPasswordError("");
+    setAdminActionLoading(false);
   }
 
   function closeAdminPasswordModal() {
+    if (adminActionLoading) return;
     setPendingAction(null);
     setAdminPassword("");
     setAdminPasswordError("");
@@ -104,7 +120,7 @@ export function Dashboard() {
   async function loadProjects() {
     try {
       setLoading(true);
-      const response = await fetch("/api/projects", { cache: "no-store" });
+      const response = await fetch("/api/projects?previewImages=2", { cache: "no-store" });
       if (!response.ok) throw new Error("Failed to load projects.");
       const data = (await response.json()) as ProjectRecord[];
       setProjects(data);
@@ -132,15 +148,34 @@ export function Dashboard() {
     setEditor(emptyEditor());
   }
 
-  function openEdit(project: ProjectRecord) {
-    setEditor({
-      mode: "edit",
-      id: project.id,
-      name: project.name,
-      description: project.description,
-      images: project.images,
-      pendingFiles: []
-    });
+  async function openEdit(projectId: string) {
+    try {
+      setLoadingEditorProjectId(projectId);
+      const response = await fetch(`/api/projects/${projectId}`, { cache: "no-store" });
+
+      if (!response.ok) {
+        throw new Error("Unable to load full project details.");
+      }
+
+      const project = (await response.json()) as ProjectRecord;
+
+      setEditor({
+        mode: "edit",
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        createdAt: toLocalDateTimeValue(project.createdAt),
+        images: project.images,
+        pendingFiles: []
+      });
+    } catch (error) {
+      setToast({
+        kind: "error",
+        message: error instanceof Error ? error.message : "Unable to load project details."
+      });
+    } finally {
+      setLoadingEditorProjectId(null);
+    }
   }
 
   function requestCreate() {
@@ -148,7 +183,7 @@ export function Dashboard() {
   }
 
   function requestEdit(project: ProjectRecord) {
-    openAdminPasswordModal({ type: "edit", project });
+    openAdminPasswordModal({ type: "edit", projectId: project.id });
   }
 
   function requestDelete(projectId: string) {
@@ -158,28 +193,36 @@ export function Dashboard() {
   async function confirmAdminPassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (adminActionLoading) return;
+
     if (adminPassword !== ADMIN_PASSWORD) {
       setAdminPasswordError("Incorrect password.");
       return;
     }
 
     const action = pendingAction;
-    closeAdminPasswordModal();
 
     if (!action) return;
 
-    if (action.type === "create") {
-      openCreate();
-      return;
-    }
+    try {
+      setAdminActionLoading(true);
 
-    if (action.type === "edit") {
-      openEdit(action.project);
-      return;
-    }
+      if (action.type === "create") {
+        openCreate();
+        return;
+      }
 
-    if (action.type === "delete") {
-      await deleteProject(action.projectId);
+      if (action.type === "edit") {
+        await openEdit(action.projectId);
+        return;
+      }
+
+      if (action.type === "delete") {
+        await deleteProject(action.projectId);
+      }
+    } finally {
+      setAdminActionLoading(false);
+      closeAdminPasswordModal();
     }
   }
 
@@ -189,7 +232,7 @@ export function Dashboard() {
     setEditor(null);
   }
 
-  function updateField(field: "name" | "description", value: string) {
+  function updateField(field: "name" | "description" | "createdAt", value: string) {
     if (!editor) return;
     setEditor({ ...editor, [field]: value });
   }
@@ -280,6 +323,7 @@ export function Dashboard() {
       const payload = {
         name: editor.name.trim(),
         description: editor.description.trim(),
+        createdAt: toIsoDateTime(editor.createdAt),
         images: [...existingImagesPayload, ...uploaded]
       };
 
@@ -386,7 +430,7 @@ Loading...
                 <div className="project-cover">
                   {project.images[0] ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={project.images[0].url} alt={project.name} />
+                    <img src={project.images[0].url} alt={project.name} loading="lazy" decoding="async" />
                   ) : null}
                 </div>
                 <div className="project-body">
@@ -395,14 +439,15 @@ Loading...
                     <p>{project.description}</p>
                   </div>
                   <div className="project-footer">
-                    <span className="pill">{project.images.length} images</span>
+                    <span className="pill">{project.imageCount} images</span>
                     <div className="actions">
                       <button
                         className="btn btn-ghost"
                         type="button"
                         onClick={() => requestEdit(project)}
+                        disabled={loadingEditorProjectId === project.id}
                       >
-                        <Pencil size={16} /> Edit
+                        <Pencil size={16} /> {loadingEditorProjectId === project.id ? "Loading..." : "Edit"}
                       </button>
                       <button
                         className="btn btn-danger gap-2"
@@ -462,6 +507,16 @@ Loading...
               </div>
 
               <div className="field">
+                <label htmlFor="created-at">Created at</label>
+                <input
+                  id="created-at"
+                  type="datetime-local"
+                  value={editor.createdAt}
+                  onChange={(event) => updateField("createdAt", event.target.value)}
+                />
+              </div>
+
+              <div className="field">
                 <label htmlFor="description">Description</label>
                 <textarea
                   id="description"
@@ -481,7 +536,7 @@ Loading...
                   {editor.images.map((image) => (
                     <div key={image.id} className="image-chip">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={image.url} alt={image.filename} />
+                      <img src={image.url} alt={image.filename} loading="lazy" decoding="async" />
                       <button
                         type="button"
                         onClick={() => removeExistingImage(image.id)}
@@ -560,7 +615,7 @@ Loading...
         <div
           className="modal-backdrop"
           role="presentation"
-          onClick={closeAdminPasswordModal}
+          onClick={adminActionLoading ? undefined : closeAdminPasswordModal}
         >
           <div
             className="modal"
@@ -573,7 +628,12 @@ Loading...
                 <div className="section-label">Admin access</div>
                 <h2>Password required</h2>
               </div>
-              <button className="btn btn-ghost" type="button" onClick={closeAdminPasswordModal}>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={closeAdminPasswordModal}
+                disabled={adminActionLoading}
+              >
                 <X size={16} /> Close
               </button>
             </div>
@@ -591,16 +651,22 @@ Loading...
                   }}
                   placeholder="Enter admin password"
                   autoFocus
+                  disabled={adminActionLoading}
                 />
                 {adminPasswordError ? <p className="help" style={{ color: "#ffb3b3" }}>{adminPasswordError}</p> : null}
               </div>
 
               <div className="form-actions">
-                <button className="btn btn-ghost" type="button" onClick={closeAdminPasswordModal}>
+                <button
+                  className="btn btn-ghost"
+                  type="button"
+                  onClick={closeAdminPasswordModal}
+                  disabled={adminActionLoading}
+                >
                   Cancel
                 </button>
-                <button className="btn btn-primary" type="submit">
-                  Continue
+                <button className="btn btn-primary" type="submit" disabled={adminActionLoading}>
+                  {adminActionLoading ? "Loading..." : "Continue"}
                 </button>
               </div>
             </form>
@@ -611,4 +677,26 @@ Loading...
       {toast ? <div className={`toast ${toast.kind}`}>{toast.message}</div> : null}
     </section>
   );
+}
+
+function toLocalDateTimeValue(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toISOString().slice(0, 16);
+  }
+
+  const pad = (part: number) => String(part).padStart(2, "0");
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function toIsoDateTime(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Invalid created date.");
+  }
+
+  return date.toISOString();
 }

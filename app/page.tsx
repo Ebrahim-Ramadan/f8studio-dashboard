@@ -1,6 +1,21 @@
 import { Dashboard } from "@/components/dashboard";
+import { listProjectsWithPreview } from "@/lib/projects";
+import { ensureSchema } from "@/lib/schema";
+import { ProjectRecord } from "@/lib/types";
 
-export default function Page() {
+export default async function Page() {
+  let initialProjects: ProjectRecord[] = [];
+  let initialLoaded = false;
+
+  try {
+    await ensureSchema();
+    initialProjects = await listProjectsWithPreview(2);
+    initialLoaded = true;
+  } catch {
+    initialProjects = [];
+    initialLoaded = false;
+  }
+
   return (
     <main className="shell">
       <section className="hero">
@@ -18,7 +33,7 @@ export default function Page() {
 
       </section>
 
-      <Dashboard />
+      <Dashboard initialProjects={initialProjects} initialLoaded={initialLoaded} />
     </main>
   );
 }

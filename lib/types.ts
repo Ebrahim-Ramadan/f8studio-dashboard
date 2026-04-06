@@ -10,6 +10,7 @@ export type ProjectRecord = {
   name: string;
   description: string;
   images: ProjectImage[];
+  imageCount: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -31,5 +32,6 @@ export type ProjectImageInput = ExistingImageInput | NewImageInput;
 export type ProjectUpsertPayload = {
   name: string;
   description: string;
+  createdAt?: string;
   images: ProjectImageInput[];
 };

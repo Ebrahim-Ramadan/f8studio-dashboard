@@ -1,26 +1,13 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { ensureSchema } from "@/lib/schema";
+import { getProjectById } from "@/lib/projects";
 import { projectSchema } from "@/lib/validators";
 import {
-  ProjectRecord,
   type ExistingImageInput,
   type NewImageInput,
   type ProjectImageInput
 } from "@/lib/types";
-
-function toProjectRecord(row: Record<string, unknown>): ProjectRecord {
-  const images = Array.isArray(row.images) ? row.images : [];
-
-  return {
-    id: String(row.id),
-    name: String(row.name),
-    description: String(row.description),
-    images: images as ProjectRecord["images"],
-    createdAt: new Date(String(row.created_at)).toISOString(),
-    updatedAt: new Date(String(row.updated_at)).toISOString()
-  };
-}
 
 function existingImagePayload(image: ProjectImageInput): image is ExistingImageInput {
   return "id" in image;
@@ -30,40 +17,20 @@ function newImagePayload(image: ProjectImageInput): image is NewImageInput {
   return "dataBase64" in image;
 }
 
-async function getProjectById(id: string) {
-  const result = await query(
-    `
-      SELECT
-        p.id,
-        p.name,
-        p.description,
-        p.created_at,
-        p.updated_at,
-        COALESCE(
-          jsonb_agg(
-            jsonb_build_object(
-              'id', pi.id,
-              'filename', pi.filename,
-              'mimeType', pi.mime_type,
-              'url', '/api/projects/' || p.id || '/images/' || pi.id
-            )
-            ORDER BY pi.created_at
-          ) FILTER (WHERE pi.id IS NOT NULL),
-          '[]'::jsonb
-        ) AS images
-      FROM projects p
-      LEFT JOIN project_images pi ON pi.project_id = p.id
-      WHERE p.id = $1
-      GROUP BY p.id;
-    `,
-    [id]
-  );
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  await ensureSchema();
 
-  if (!result.rows.length) {
-    return null;
+  const { id } = await params;
+  const project = await getProjectById(id);
+
+  if (!project) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  return toProjectRecord(result.rows[0] as Record<string, unknown>);
+  return NextResponse.json(project);
 }
 
 export async function PATCH(
@@ -96,10 +63,14 @@ export async function PATCH(
   await query(
     `
       UPDATE projects
-      SET name = $2, description = $3, updated_at = now()
+      SET
+        name = $2,
+        description = $3,
+        created_at = COALESCE($4::timestamptz, created_at),
+        updated_at = now()
       WHERE id = $1
     `,
-    [id, parsed.data.name, parsed.data.description]
+    [id, parsed.data.name, parsed.data.description, parsed.data.createdAt ?? null]
   );
 
   if (keepImageIds.length > 0) {

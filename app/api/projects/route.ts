@@ -1,70 +1,20 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { ensureSchema } from "@/lib/schema";
+import { getProjectById, listProjectsWithPreview, normalizePreviewLimit } from "@/lib/projects";
 import { projectSchema } from "@/lib/validators";
-import {
-  ProjectRecord,
-  type ExistingImageInput,
-  type NewImageInput,
-  type ProjectImageInput
-} from "@/lib/types";
-
-function toProjectRecord(row: Record<string, unknown>): ProjectRecord {
-  const images = Array.isArray(row.images) ? row.images : [];
-
-  return {
-    id: String(row.id),
-    name: String(row.name),
-    description: String(row.description),
-    images: images as ProjectRecord["images"],
-    createdAt: new Date(String(row.created_at)).toISOString(),
-    updatedAt: new Date(String(row.updated_at)).toISOString()
-  };
-}
-
-function existingImagePayload(image: ProjectImageInput): image is ExistingImageInput {
-  return "id" in image;
-}
+import { type NewImageInput, type ProjectImageInput } from "@/lib/types";
 
 function newImagePayload(image: ProjectImageInput): image is NewImageInput {
   return "dataBase64" in image;
 }
 
-async function getAllProjects() {
-  const result = await query(
-    `
-      SELECT
-        p.id,
-        p.name,
-        p.description,
-        p.created_at,
-        p.updated_at,
-        COALESCE(
-          jsonb_agg(
-            jsonb_build_object(
-              'id', pi.id,
-              'filename', pi.filename,
-              'mimeType', pi.mime_type,
-              'url', '/api/projects/' || p.id || '/images/' || pi.id
-            )
-            ORDER BY pi.created_at
-          ) FILTER (WHERE pi.id IS NOT NULL),
-          '[]'::jsonb
-        ) AS images
-      FROM projects p
-      LEFT JOIN project_images pi ON pi.project_id = p.id
-      GROUP BY p.id
-      ORDER BY p.updated_at DESC, p.created_at DESC;
-    `
-  );
-
-  return result.rows.map((row) => toProjectRecord(row as Record<string, unknown>));
-}
-
-export async function GET() {
+export async function GET(request: Request) {
   await ensureSchema();
+  const { searchParams } = new URL(request.url);
+  const previewLimit = normalizePreviewLimit(searchParams.get("previewImages"));
 
-  return NextResponse.json(await getAllProjects());
+  return NextResponse.json(await listProjectsWithPreview(previewLimit));
 }
 
 export async function POST(request: Request) {
@@ -80,7 +30,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { name, description, images } = parsed.data;
+  const { name, description, images, createdAt } = parsed.data;
   const newImages = images.filter(newImagePayload);
 
   if (newImages.length < 1) {
@@ -92,11 +42,11 @@ export async function POST(request: Request) {
 
   const result = await query(
     `
-      INSERT INTO projects (name, description)
-      VALUES ($1, $2)
+      INSERT INTO projects (name, description, created_at)
+      VALUES ($1, $2, COALESCE($3::timestamptz, now()))
       RETURNING id;
     `,
-    [name, description]
+    [name, description, createdAt ?? null]
   );
 
   const projectId = String((result.rows[0] as Record<string, unknown>).id);
@@ -111,8 +61,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const projects = await getAllProjects();
-  const created = projects.find((project) => project.id === projectId);
+  const created = await getProjectById(projectId);
 
   if (!created) {
     return NextResponse.json({ error: "Project was created but could not be fetched." }, { status: 500 });
