@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, X, RefreshCcw } from "lucide-react";
+import { Plus, Pencil, Trash2, X, RefreshCcw, UploadCloud } from "lucide-react";
 import { ProjectImage, ProjectRecord } from "@/lib/types";
 import { compressImage } from "@/lib/image-compression";
 
@@ -39,7 +39,7 @@ const emptyEditor = (): EditorState => ({
   mode: "create",
   name: "",
   description: "",
-  createdAt: new Date().toISOString().slice(0, 16),
+  createdAt: new Date().toISOString().slice(0, 10),
   images: [],
   pendingFiles: []
 });
@@ -472,13 +472,13 @@ Loading...
           <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
-                <div className="section-label">
-                  {editor.mode === "create" ? "New project" : "Edit project"}
-                </div>
+                {/* <div className="section-label">
+                  {editor.mode === "create" ? "New" : "Edit"}
+                </div> */}
                 <h2>{editor.mode === "create" ? "Add project" : editor.name}</h2>
               </div>
               <button className="btn btn-ghost" type="button" onClick={closeEditor}>
-                <X size={16} /> Close
+                <X size={20} /> 
               </button>
             </div>
 
@@ -495,13 +495,59 @@ Loading...
                 </div>
 
                 <div className="field">
-                  <label htmlFor="images">Add images</label>
+                  <label>Images</label>
+                  <label
+                    htmlFor="images"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 14,
+                      padding: "10px 18px",
+                      borderRadius: 18,
+                      border: "1px solid rgba(98, 133, 202, 0.26)",
+                      background: "linear-gradient(180deg, rgba(23, 31, 51, 0.9), rgba(14, 19, 31, 0.95))",
+                      cursor: "pointer",
+                      boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.02)"
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 14,
+                        display: "grid",
+                        placeItems: "center",
+                        background: "linear-gradient(135deg, rgba(88, 156, 255, 0.22), rgba(88, 156, 255, 0.08))",
+                        border: "1px solid rgba(111, 163, 255, 0.24)",
+                        color: "#8cc0ff",
+                        flex: "0 0 auto"
+                      }}
+                    >
+                      <UploadCloud size={20} strokeWidth={2.2} />
+                    </div>
+                    <div style={{ display: "grid", gap: 2 }}>
+                      <strong style={{ color: "#f2f6ff", fontSize: "0.85rem" }}>Upload images</strong>
+                      <span style={{ color: "#9cafcc", fontSize: "0.62rem" }}>
+                        PNG, JPG, WEBP. Click to choose multiple files.
+                      </span>
+                    </div>
+                  </label>
                   <input
                     id="images"
                     type="file"
                     multiple
                     accept="image/*"
                     onChange={(event) => addFiles(event.target.files)}
+                    style={{
+                      position: "absolute",
+                      width: 1,
+                      height: 1,
+                      padding: 0,
+                      margin: -1,
+                      overflow: "hidden",
+                      clip: "rect(0, 0, 0, 0)",
+                      border: 0
+                    }}
                   />
                 </div>
               </div>
@@ -510,7 +556,7 @@ Loading...
                 <label htmlFor="created-at">Created at</label>
                 <input
                   id="created-at"
-                  type="datetime-local"
+                  type="date"
                   value={editor.createdAt}
                   onChange={(event) => updateField("createdAt", event.target.value)}
                 />
@@ -683,16 +729,16 @@ function toLocalDateTimeValue(value: string) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return new Date().toISOString().slice(0, 16);
+    return new Date().toISOString().slice(0, 10);
   }
 
   const pad = (part: number) => String(part).padStart(2, "0");
 
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 function toIsoDateTime(value: string) {
-  const date = new Date(value);
+  const date = new Date(`${value}T00:00:00`);
 
   if (Number.isNaN(date.getTime())) {
     throw new Error("Invalid created date.");

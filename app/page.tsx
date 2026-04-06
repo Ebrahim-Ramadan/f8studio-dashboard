@@ -20,7 +20,7 @@ export default async function Page() {
     <main className="shell">
       <section className="hero">
         <div className="hero-brand">
-          <p className="eyebrow">Architectural office</p>
+          {/* <p className="eyebrow">Architectural office</p> */}
           <img
             src="/logo.jpeg"
             alt="Architectural office logo"
