@@ -484,7 +484,8 @@ Loading...
                         onClick={() => requestEdit(project)}
                         disabled={loadingEditorProjectId === project.id}
                       >
-                        <Pencil size={16} /> {loadingEditorProjectId === project.id ? "Loading..." : "Edit"}
+                        <Pencil size={16} />
+                         {/* {loadingEditorProjectId === project.id ? "Loading..." : "Edit"} */}
                       </button>
                       <button
                         className="btn btn-danger gap-2"
@@ -493,7 +494,7 @@ Loading...
                         disabled={deletingId === project.id}
                       >
                         <Trash2 size={16} />
-                        {deletingId === project.id ? "Deleting" : "Delete"}
+                        {/* {deletingId === project.id ? "Deleting" : "Delete"} */}
                       </button>
                     </div>
                   </div>
@@ -535,7 +536,7 @@ Loading...
                 }}
               >
                 <ChevronLeft size={14} />
-                Previous
+                {/* Previous */}
               </button>
 
               <span style={{ color: "#9cafcc", fontSize: "0.85rem", textAlign: "center" }}>
@@ -558,14 +559,9 @@ Loading...
                   whiteSpace: "nowrap"
                 }}
               >
-                Next
+                {/* Next */}
                 <ChevronRight size={14} />
               </button>
-            </div>
-
-            {/* Total Count Row */}
-            <div style={{ color: "#9cafcc", fontSize: "0.85rem", textAlign: "center" }}>
-              Total: <strong style={{ color: "#f2f6ff" }}>{data?.total ?? 0}</strong> project{(data?.total ?? 0) !== 1 ? "s" : ""}
             </div>
           </div>
         )}
