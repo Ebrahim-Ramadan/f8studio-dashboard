@@ -29,7 +29,12 @@ export default async function Page() {
             className="hero-logo"
           />
         </div>
-        <img src="/OIP.png" alt="Architectural office logo" width="200" height="200" className="house3d" />
+        <nav className="hero-nav" aria-label="Quick links">
+          <a href="/submissions" className="nav-icon" aria-label="Submissions">Submissions</a>
+          {/* <a href="/projects" className="nav-icon" aria-label="Projects">📐</a>
+          <a href="/contact" className="nav-icon" aria-label="Contact">✉️</a>
+          <a href="/about" className="nav-icon" aria-label="About">ℹ️</a> */}
+        </nav>
       </section>
 
       <Dashboard initialData={initialData} initialLoaded={initialLoaded} />

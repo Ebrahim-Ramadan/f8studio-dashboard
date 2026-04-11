@@ -398,6 +398,32 @@ h1 {
   gap: 12px;
 }
 
+/* Horizontal navbar of icon links used in the hero */
+.hero-nav {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(139,184,255,0.06), rgba(95,140,255,0.03));
+  border: 1px solid rgba(139,184,255,0.12);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 16px;
+}
+
+.nav-icon:hover {
+  transform: translateY(-4px);
+  
+}
+
 .image-chip {
   border-radius: 18px;
   overflow: hidden;
