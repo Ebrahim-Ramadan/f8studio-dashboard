@@ -74,11 +74,18 @@ textarea {
 }
 
 .hero {
-    display: flex;
-    justify-content: space-between;
-    justify-items: center;
-    align-items: center;
-    margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  justify-items: center;
+  align-items: center;
+  padding: 20px 16px;
+  margin-bottom: 24px;
+}
+
+/* Keep hero content aligned with `.shell` width and centered */
+.hero .hero-brand {
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
 }
 
 .hero-brand {

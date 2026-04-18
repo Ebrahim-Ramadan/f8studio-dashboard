@@ -86,7 +86,7 @@ export function Submissions({
   if (loading && !data) {
     return (
       <main className="shell">
-        <section className="hero">
+        {/* <section className="hero">
           <div className="hero-brand">
             <img
               src="/logo.jpeg"
@@ -97,7 +97,7 @@ export function Submissions({
             />
           </div>
           <img src="/OIP.png" alt="Architectural office logo" width="200" height="200" className="house3d" />
-        </section>
+        </section> */}
         <div style={{ padding: "2rem", textAlign: "center" }}>
           <p>Loading submissions...</p>
         </div>
@@ -108,7 +108,7 @@ export function Submissions({
   if (!data) {
     return (
       <main className="shell">
-        <section className="hero">
+        {/* <section className="hero">
           <div className="hero-brand">
             <img
               src="/logo.jpeg"
@@ -119,7 +119,7 @@ export function Submissions({
             />
           </div>
           <img src="/OIP.png" alt="Architectural office logo" width="200" height="200" className="house3d" />
-        </section>
+        </section> */}
         <div style={{ padding: "2rem", textAlign: "center" }}>
           <p style={{ color: "#d84949" }}>Failed to load submissions</p>
         </div>
@@ -129,7 +129,7 @@ export function Submissions({
 
   return (
     <main className="shell">
-      <section className="hero">
+      {/* <section className="hero">
         <div className="hero-brand">
           <img
             src="/logo.jpeg"
@@ -140,7 +140,7 @@ export function Submissions({
           />
         </div>
         <img src="/OIP.png" alt="Architectural office logo" width="200" height="200" className="house3d" />
-      </section>
+      </section> */}
 
       <section style={{ padding: "2rem" }}>
         <h1 style={{ marginBottom: "2rem", color: "#f2f6ff" }}>Contact Submissions</h1>

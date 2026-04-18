@@ -1,5 +1,4 @@
 import { Dashboard } from "@/components/dashboard";
-import HeroNav from "@/components/heroNav";
 import { listProjectsWithPaginationAndPreview } from "@/lib/projects";
 import { ensureSchema } from "@/lib/schema";
 import { ProjectsResponse } from "@/lib/types";
@@ -23,10 +22,6 @@ export default async function Page() {
 
   return (
     <main className="shell">
-      <section className="hero">
-        <HeroNav />
-      </section>
-
       <Dashboard initialData={initialData} initialLoaded={initialLoaded} />
     </main>
   );

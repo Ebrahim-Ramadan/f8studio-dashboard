@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import HeroNav from "@/components/heroNav";
 
 export const metadata: Metadata = {
   title: "F8 Office Admin",
@@ -7,10 +8,8 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.png",
-    apple: "/apple.png" 
-  },
-
-
+    apple: "/apple.png"
+  }
 };
 
 export default function RootLayout({
@@ -20,7 +19,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <section className="hero">
+          <HeroNav />
+        </section>
+        {children}
+      </body>
     </html>
   );
 }
