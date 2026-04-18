@@ -49,8 +49,12 @@ export async function compressImage(
           // Prefer WebP output when possible for better compression of photographic images.
           const preferType = (() => {
             try {
-              // If browser supports webp, prefer it for smaller output when original isn't already webp
-              const supportsWebp = HTMLCanvasElement.prototype.toBlob && typeof Blob !== "undefined";
+              // Feature-detect WebP support by asking a canvas for a WebP data URL.
+              // Some TypeScript environments warn when referencing prototype members
+              // directly, so use an instance check which is a reliable runtime test.
+              const canvas = document.createElement("canvas");
+              const dataUrl = canvas.toDataURL("image/webp");
+              const supportsWebp = typeof dataUrl === "string" && dataUrl.indexOf("data:image/webp") === 0;
               if (supportsWebp && file.type !== "image/webp") return "image/webp";
             } catch {}
             return file.type || "image/jpeg";
