@@ -1,16 +1,20 @@
 import { z } from "zod";
 
-const existingImageSchema = z.object({
-  id: z.string().uuid(),
-  filename: z.string().trim().min(1).max(300),
-  mimeType: z.string().trim().min(1).max(120)
-});
+const existingImageSchema = z
+  .object({
+    id: z.string().uuid(),
+    filename: z.string().trim().min(1).max(300),
+    mimeType: z.string().trim().min(1).max(120)
+  })
+  .extend({ isFront: z.boolean().optional() });
 
-const newImageSchema = z.object({
-  filename: z.string().trim().min(1).max(300),
-  mimeType: z.string().trim().min(1).max(120),
-  dataBase64: z.string().trim().min(1)
-});
+const newImageSchema = z
+  .object({
+    filename: z.string().trim().min(1).max(300),
+    mimeType: z.string().trim().min(1).max(120),
+    dataBase64: z.string().trim().min(1)
+  })
+  .extend({ isFront: z.boolean().optional() });
 
 export const projectImageInputSchema = z.union([existingImageSchema, newImageSchema]);
 

@@ -27,8 +27,15 @@ export function ensureSchema() {
           filename text NOT NULL,
           mime_type text NOT NULL,
           image_data bytea NOT NULL,
+          is_front boolean NOT NULL DEFAULT false,
           created_at timestamptz NOT NULL DEFAULT now()
         );
+      `);
+
+      // If table existed before adding is_front, ensure the column exists
+      await query(`
+        ALTER TABLE project_images
+        ADD COLUMN IF NOT EXISTS is_front boolean NOT NULL DEFAULT false;
       `);
 
       await query(`

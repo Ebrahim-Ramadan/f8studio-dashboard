@@ -70,7 +70,7 @@ textarea {
 .shell {
   width: min(1200px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 40px 0 56px;
+  padding: 0 0 56px;
 }
 
 .hero {
@@ -328,12 +328,14 @@ h1 {
   background: linear-gradient(135deg, rgba(95, 140, 255, 0.2), rgba(103, 211, 155, 0.15));
   position: relative;
   display: block;
+  max-height: 220px;
+  overflow: hidden;
 }
 
 .project-cover img {
   width: 100%;
-  height: auto;
-  object-fit: contain;
+  height: 220px;
+  object-fit: cover;
   object-position: center;
   display: block;
 }
@@ -487,7 +489,7 @@ html, body {
 
 .image-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 12px;
 }
 
@@ -534,15 +536,25 @@ html, body {
 
 .image-chip button {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 8px;
   border: 0;
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  background: rgba(8, 17, 31, 0.82);
+  background: rgba(8, 17, 31, 0.56);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.04);
   color: #fff;
   cursor: pointer;
+}
+
+/* Place up to two action buttons side-by-side in the top-right corner */
+.image-chip button:last-of-type {
+  right: 8px; /* right-most button (star) */
+}
+.image-chip button:first-of-type {
+  right: 48px; /* left of the right-most button (remove) */
 }
 
 .form-actions {
@@ -624,13 +636,21 @@ html, body {
 
   .shell {
     width: min(100% - 20px, 1200px);
-    padding-top: 20px;
+    padding-top: 5px;
   }
 
   .panel,
   .modal {
     padding: 16px;
     border-radius: 22px;
+  }
+
+  .project-cover {
+    max-height: 140px;
+  }
+
+  .project-cover img {
+    height: 140px;
   }
 
   .toolbar {

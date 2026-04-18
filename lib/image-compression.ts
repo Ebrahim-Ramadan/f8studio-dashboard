@@ -46,21 +46,37 @@ export async function compressImage(
 
           ctx.drawImage(img, 0, 0, width, height);
 
+          // Prefer WebP output when possible for better compression of photographic images.
+          const preferType = (() => {
+            try {
+              // If browser supports webp, prefer it for smaller output when original isn't already webp
+              const supportsWebp = HTMLCanvasElement.prototype.toBlob && typeof Blob !== "undefined";
+              if (supportsWebp && file.type !== "image/webp") return "image/webp";
+            } catch {}
+            return file.type || "image/jpeg";
+          })();
+
           canvas.toBlob(
-            (blob) => {
+            async (blob) => {
               if (!blob) {
                 reject(new Error("Failed to compress image"));
                 return;
               }
 
+              // If compression made the file larger, return the original file to avoid regressions.
+              if (blob.size >= file.size) {
+                resolve(file);
+                return;
+              }
+
               const compressedFile = new File([blob], file.name, {
-                type: file.type || "image/jpeg",
+                type: preferType,
                 lastModified: Date.now()
               });
 
               resolve(compressedFile);
             },
-            file.type || "image/jpeg",
+            preferType,
             quality
           );
         };

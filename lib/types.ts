@@ -3,6 +3,7 @@ export type ProjectImage = {
   url: string;
   filename: string;
   mimeType: string;
+  isFront?: boolean;
 };
 
 export type ProjectRecord = {
@@ -19,12 +20,14 @@ export type ExistingImageInput = {
   id: string;
   filename: string;
   mimeType: string;
+  isFront?: boolean;
 };
 
 export type NewImageInput = {
   filename: string;
   mimeType: string;
   dataBase64: string;
+  isFront?: boolean;
 };
 
 export type ProjectImageInput = ExistingImageInput | NewImageInput;

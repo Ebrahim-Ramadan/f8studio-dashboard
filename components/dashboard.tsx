@@ -28,6 +28,8 @@ type EditorState = {
   createdAt: string;
   images: ProjectImage[];
   pendingFiles: DraftImage[];
+  frontSelection?: string | null; // 'existing:<id>' or 'pending:<id>'
+  prefetchedImageUrls?: string[];
 };
 
 type PendingAction =
@@ -42,6 +44,8 @@ const emptyEditor = (): EditorState => ({
   createdAt: new Date().toISOString().slice(0, 10),
   images: [],
   pendingFiles: []
+  , frontSelection: null
+  , prefetchedImageUrls: []
 });
 
 function fileToBase64(file: File): Promise<string> {
@@ -103,7 +107,7 @@ export function Dashboard({
       try {
         setLoading(true);
         const response = await fetch(
-          `/api/projects?page=${currentPage}&pageSize=${pageSize}&previewImages=2`,
+          `/api/projects?page=${currentPage}&pageSize=${pageSize}&previewImages=1`,
           { cache: "no-store" }
         );
         if (!response.ok) throw new Error("Failed to load projects.");
@@ -151,7 +155,7 @@ export function Dashboard({
   async function loadProjects(page: number = 1) {
     try {
       setLoading(true);
-      const response = await fetch(`/api/projects?page=${page}&pageSize=${pageSize}&previewImages=2`, {
+      const response = await fetch(`/api/projects?page=${page}&pageSize=${pageSize}&previewImages=1`, {
         cache: "no-store"
       });
       if (!response.ok) throw new Error("Failed to load projects.");
@@ -193,14 +197,36 @@ export function Dashboard({
 
       const project = (await response.json()) as ProjectRecord;
 
+      const frontImage = project.images.find((img) => (img as any).isFront);
+
+      // Prefetch image blobs and replace URLs with object URLs to ensure previews
+      const prefetched: string[] = [];
+      const imagesWithObjectUrls = await Promise.all(
+        project.images.map(async (img) => {
+          try {
+            const res = await fetch(img.url, { cache: "no-store" });
+            if (!res.ok) throw new Error("Failed to fetch image");
+            const blob = await res.blob();
+            const objUrl = URL.createObjectURL(blob);
+            prefetched.push(objUrl);
+            return { ...img, url: objUrl };
+          } catch {
+            // fallback to original URL if prefetch fails
+            return img;
+          }
+        })
+      );
+
       setEditor({
         mode: "edit",
         id: project.id,
         name: project.name,
         description: project.description,
         createdAt: toLocalDateTimeValue(project.createdAt),
-        images: project.images,
-        pendingFiles: []
+        images: imagesWithObjectUrls,
+        pendingFiles: [],
+        frontSelection: frontImage ? `existing:${frontImage.id}` : null,
+        prefetchedImageUrls: prefetched
       });
     } catch (error) {
       setToast({
@@ -264,6 +290,11 @@ export function Dashboard({
     if (saving) return;
     if (!editor) return;
     editor.pendingFiles.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    editor.prefetchedImageUrls?.forEach((u) => {
+      try {
+        URL.revokeObjectURL(u);
+      } catch {}
+    });
     setEditor(null);
   }
 
@@ -284,7 +315,24 @@ export function Dashboard({
       isCompressing: true
     }));
 
-    setEditor({ ...editor, pendingFiles: [...editor.pendingFiles, ...nextFiles] });
+    // If creating a new project and there are no existing images, ensure one pending image
+    // becomes the front selection. If multiple pending images are present, pick one at random.
+    const combinedPending = [...editor.pendingFiles, ...nextFiles];
+    let nextFront = editor.frontSelection;
+    if (editor.mode === "create" && editor.images.length === 0 && !editor.frontSelection) {
+      if (combinedPending.length === 1) {
+        nextFront = `pending:${combinedPending[0].id}`;
+      } else if (combinedPending.length > 1) {
+        const rand = Math.floor(Math.random() * combinedPending.length);
+        nextFront = `pending:${combinedPending[rand].id}`;
+      }
+    }
+
+    setEditor({
+      ...editor,
+      pendingFiles: combinedPending,
+      frontSelection: nextFront
+    });
 
     // Compress each file in background
     for (const draftImage of nextFiles) {
@@ -319,14 +367,108 @@ export function Dashboard({
     if (!editor) return;
     const target = editor.pendingFiles.find((item) => item.id === id);
     if (target) URL.revokeObjectURL(target.previewUrl);
-    setEditor({ ...editor, pendingFiles: editor.pendingFiles.filter((item) => item.id !== id) });
+    // If the removed draft was the selected front, pick another remaining image
+    let nextFront = editor.frontSelection;
+    if (editor.frontSelection === `pending:${id}`) {
+      const remainingPending = editor.pendingFiles.filter((item) => item.id !== id);
+      if (remainingPending.length > 0) {
+        nextFront = `pending:${remainingPending[0].id}`;
+      } else if (editor.images.length > 0) {
+        nextFront = `existing:${editor.images[0].id}`;
+      } else {
+        nextFront = null;
+      }
+    }
+
+    // Update images' isFront flags based on the new frontSelection
+    const updatedImages = editor.images.map((img) => ({ ...img, isFront: nextFront === `existing:${img.id}` }));
+
+    setEditor({
+      ...editor,
+      pendingFiles: editor.pendingFiles.filter((item) => item.id !== id),
+      frontSelection: nextFront,
+      images: updatedImages
+    });
   }
 
   function removeExistingImage(imageId: string) {
     if (!editor) return;
+    // If the removed existing image was the selected front, pick another remaining image
+    let nextFront = editor.frontSelection;
+    if (editor.frontSelection === `existing:${imageId}`) {
+      const remainingExisting = editor.images.filter((image) => image.id !== imageId);
+      if (remainingExisting.length > 0) {
+        nextFront = `existing:${remainingExisting[0].id}`;
+      } else if (editor.pendingFiles.length > 0) {
+        nextFront = `pending:${editor.pendingFiles[0].id}`;
+      } else {
+        nextFront = null;
+      }
+    }
+    // revoke object URL if we prefetched it
+    const target = editor.images.find((image) => image.id === imageId);
+    if (target && editor.prefetchedImageUrls?.includes(target.url)) {
+      try {
+        URL.revokeObjectURL(target.url);
+      } catch {}
+    }
+
+    // Update remaining images isFront according to the nextFront selection
+    const remainingImages = editor.images.filter((image) => image.id !== imageId).map((img) => ({
+      ...img,
+      isFront: nextFront === `existing:${img.id}`
+    }));
+
     setEditor({
       ...editor,
-      images: editor.images.filter((image) => image.id !== imageId)
+      images: remainingImages,
+      prefetchedImageUrls: editor.prefetchedImageUrls?.filter((u) => u !== (target?.url)) ?? [],
+      frontSelection: nextFront
+    });
+  }
+
+  function setFrontSelection(kind: "existing" | "pending", id: string) {
+    if (!editor) return;
+    // When selecting an existing image as front, immediately update the local
+    // `isFront` flags so the UI reflects the change without waiting for the server.
+    if (kind === "existing") {
+      setEditor({
+        ...editor,
+        frontSelection: `existing:${id}`,
+        images: editor.images.map((img) => ({ ...img, isFront: img.id === id }))
+      });
+      return;
+    }
+
+    // Selecting a pending image - clear any `isFront` on existing images.
+    setEditor({
+      ...editor,
+      frontSelection: `pending:${id}`,
+      images: editor.images.map((img) => ({ ...img, isFront: false }))
+    });
+  }
+
+  function clearAllImages() {
+    if (!editor) return;
+    // revoke object URLs for pending previews
+    editor.pendingFiles.forEach((p) => {
+      try {
+        URL.revokeObjectURL(p.previewUrl);
+      } catch {}
+    });
+    // revoke any prefetched object URLs
+    editor.prefetchedImageUrls?.forEach((u) => {
+      try {
+        URL.revokeObjectURL(u);
+      } catch {}
+    });
+
+    setEditor({
+      ...editor,
+      images: [],
+      pendingFiles: [],
+      prefetchedImageUrls: [],
+      frontSelection: null
     });
   }
 
@@ -352,14 +494,23 @@ export function Dashboard({
       const existingImagesPayload: ProjectImagePayload[] = editor.images.map((image) => ({
         id: image.id,
         filename: image.filename,
-        mimeType: image.mimeType
+        mimeType: image.mimeType,
+        isFront: editor.frontSelection === `existing:${image.id}`
       }));
+
+      const uploadedWithFront = uploaded.map((u, idx) => {
+        const draft = editor.pendingFiles[idx];
+        return {
+          ...u,
+          isFront: editor.frontSelection === `pending:${draft.id}`
+        };
+      });
 
       const payload = {
         name: editor.name.trim(),
         description: editor.description.trim(),
         createdAt: toIsoDateTime(editor.createdAt),
-        images: [...existingImagesPayload, ...uploaded]
+        images: [...existingImagesPayload, ...uploadedWithFront]
       };
 
       if (payload.images.length < 1) {
@@ -382,7 +533,14 @@ export function Dashboard({
         );
       }
 
+      // revoke pending file object URLs
       editor.pendingFiles.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      // revoke prefetched image object URLs
+      editor.prefetchedImageUrls?.forEach((u) => {
+        try {
+          URL.revokeObjectURL(u);
+        } catch {}
+      });
       setEditor(null);
       await loadProjects(currentPage);
       setToast({
@@ -466,9 +624,13 @@ Loading...
             {projects.map((project) => (
               <article key={project.id} className="project-card">
                 <div className="project-cover">
-                  {project.images[0] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={project.images[0].url} alt={project.name} loading="lazy" decoding="async" />
+                  {project.images && project.images.length > 0 ? (
+                    // prefer image marked as front
+                    (() => {
+                      const front = project.images.find((img: any) => img.isFront) || project.images[0];
+                      // eslint-disable-next-line @next/next/no-img-element
+                      return <img src={front.url} alt={project.name} loading="lazy" decoding="async" />;
+                    })()
                   ) : null}
                 </div>
                 <div className="project-body">
@@ -674,7 +836,14 @@ Loading...
               </div>
 
               <div>
-                <div className="section-label">Current images</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div className="section-label">Current images</div>
+                  {(editor.images.length > 0 || editor.pendingFiles.length > 0) && (
+                    <button className="" type="button" onClick={clearAllImages}>
+                      X
+                    </button>
+                  )}
+                </div>
                 {editor.images.length === 0 && editor.pendingFiles.length === 0 ? (
                   <p className="help">Add at least one image before saving.</p>
                 ) : null}
@@ -691,6 +860,29 @@ Loading...
                       >
                         ×
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setFrontSelection("existing", image.id)}
+                        aria-label={`Set ${image.filename} as front`}
+                        style={{
+                          position: "absolute",
+                          top: 8,
+                          right: 8,
+                          padding: "4px 6px",
+                          borderRadius: 9999,
+                          background:
+                            editor.frontSelection === `existing:${image.id}` || (image as any).isFront
+                              ? "rgba(255,217,102,0.92)"
+                              : "rgba(255, 255, 255, 0.4)",
+                          color: "#07101d",
+                          fontSize: "0.75rem",
+                          border: 0,
+                          backdropFilter: "blur(6px)",
+                          WebkitBackdropFilter: "blur(6px)"
+                        }}
+                      >
+                        ★
+                      </button>
                       <div
                         style={{
                           position: "absolute",
@@ -703,7 +895,7 @@ Loading...
                           color: "#9cafcc"
                         }}
                       >
-                        {image.filename}
+                        {image.filename.length > 30 ? image.filename.slice(0, 30) + "..." : image.filename}
                       </div>
                     </div>
                   ))}
@@ -718,6 +910,26 @@ Loading...
                         disabled={image.isCompressing}
                       >
                         {image.isCompressing ? "⟳" : "×"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFrontSelection("pending", image.id)}
+                        aria-label={`Set ${image.file.name} as front`}
+                        style={{
+                          position: "absolute",
+                          top: 8,
+                          right: 8,
+                          padding: "4px 6px",
+                          borderRadius: 999,
+                          background: editor.frontSelection === `pending:${image.id}` ? "rgba(255,217,102,0.92)" : "rgba(255, 255, 255, 0.4)",
+                          color: "#07101d",
+                          fontSize: "0.75rem",
+                          border: 0,
+                          backdropFilter: "blur(6px)",
+                          WebkitBackdropFilter: "blur(6px)"
+                        }}
+                      >
+                        ★
                       </button>
                       <div
                         style={{

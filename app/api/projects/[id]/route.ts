@@ -57,6 +57,10 @@ export async function PATCH(
   }
 
   const nextImages = parsed.data.images;
+  const frontCount = nextImages.filter((img: any) => (img as any).isFront).length;
+  if (frontCount > 1) {
+    return NextResponse.json({ error: "Only one image may be marked as front." }, { status: 400 });
+  }
   const keepImageIds = nextImages.filter(existingImagePayload).map((image) => image.id);
   const newImages = nextImages.filter(newImagePayload);
 
@@ -86,15 +90,42 @@ export async function PATCH(
     await query(`DELETE FROM project_images WHERE project_id = $1`, [id]);
   }
 
+  // Clear existing front flag for this project; we'll set it below based on input
+  await query(`UPDATE project_images SET is_front = false WHERE project_id = $1`, [id]);
+
   for (const image of newImages) {
+    const isFront = Boolean((image as any).isFront);
     await query(
       `
-        INSERT INTO project_images (project_id, filename, mime_type, image_data)
-        VALUES ($1, $2, $3, decode($4, 'base64'));
+        INSERT INTO project_images (project_id, filename, mime_type, image_data, is_front)
+        VALUES ($1, $2, $3, decode($4, 'base64'), $5);
       `,
-      [id, image.filename, image.mimeType, image.dataBase64]
+      [id, image.filename, image.mimeType, image.dataBase64, isFront]
     );
   }
+
+  // If any existing image was marked as front, set it now
+  const existingFront = nextImages.filter(existingImagePayload).find((img: any) => (img as any).isFront);
+  if (existingFront) {
+    await query(`UPDATE project_images SET is_front = true WHERE id = $1 AND project_id = $2`, [existingFront.id, id]);
+  }
+
+  // Ensure only one image is marked as front for this project. If multiple are true
+  // (due to concurrent edits or unexpected state), keep the most recently created/inserted one.
+  await query(
+    `
+      WITH fronts AS (
+        SELECT id
+        FROM project_images
+        WHERE project_id = $1 AND is_front = true
+        ORDER BY created_at DESC
+      )
+      UPDATE project_images
+      SET is_front = (id = (SELECT id FROM fronts LIMIT 1))
+      WHERE project_id = $1;
+    `,
+    [id]
+  );
 
   const updated = await getProjectById(id);
 

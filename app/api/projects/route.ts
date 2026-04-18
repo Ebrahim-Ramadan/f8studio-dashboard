@@ -37,6 +37,12 @@ export async function POST(request: Request) {
   const { name, description, images, createdAt } = parsed.data;
   const newImages = images.filter(newImagePayload);
 
+  // Ensure at most one image is marked as front
+  const frontCount = images.filter((img: any) => (img as any).isFront).length;
+  if (frontCount > 1) {
+    return NextResponse.json({ error: "Only one image may be marked as front." }, { status: 400 });
+  }
+
   if (newImages.length < 1) {
     return NextResponse.json(
       { error: "At least one newly uploaded image is required when creating a project." },
@@ -55,13 +61,19 @@ export async function POST(request: Request) {
 
   const projectId = String((result.rows[0] as Record<string, unknown>).id);
 
-  for (const image of newImages) {
+  // If exactly one image was uploaded for this new project and no front flag was provided,
+  // automatically mark that image as the front image.
+  const autoFront = newImages.length === 1 && frontCount === 0;
+
+  for (const [idx, image] of newImages.entries()) {
+    const providedIsFront = Boolean((image as any).isFront);
+    const isFront = autoFront ? true : providedIsFront;
     await query(
       `
-        INSERT INTO project_images (project_id, filename, mime_type, image_data)
-        VALUES ($1, $2, $3, decode($4, 'base64'));
+        INSERT INTO project_images (project_id, filename, mime_type, image_data, is_front)
+        VALUES ($1, $2, $3, decode($4, 'base64'), $5);
       `,
-      [projectId, image.filename, image.mimeType, image.dataBase64]
+      [projectId, image.filename, image.mimeType, image.dataBase64, isFront]
     );
   }
 

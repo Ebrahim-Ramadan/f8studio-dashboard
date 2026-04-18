@@ -41,10 +41,11 @@ export async function listProjectsWithPreview(previewLimit: number) {
             jsonb_build_object(
               'id', pi.id,
               'filename', pi.filename,
-              'mimeType', pi.mime_type,
-              'url', '/api/projects/' || p.id || '/images/' || pi.id
+                'mimeType', pi.mime_type,
+                'isFront', pi.is_front,
+                'url', '/api/projects/' || p.id || '/images/' || pi.id
             )
-            ORDER BY pi.created_at
+              ORDER BY pi.is_front DESC, pi.created_at
           ) FILTER (WHERE pi.id IS NOT NULL),
           '[]'::jsonb
         ) AS images
@@ -55,10 +56,10 @@ export async function listProjectsWithPreview(previewLimit: number) {
         WHERE project_id = p.id
       ) pic ON true
       LEFT JOIN LATERAL (
-        SELECT id, filename, mime_type, created_at
+        SELECT id, filename, mime_type, is_front, created_at
         FROM project_images
         WHERE project_id = p.id
-        ORDER BY created_at
+        ORDER BY is_front DESC, created_at
         LIMIT CASE WHEN pic.image_count <= $1 THEN pic.image_count ELSE $1 END
       ) pi ON true
       GROUP BY p.id, pic.image_count
@@ -91,11 +92,12 @@ export async function getProjectById(id: string) {
           jsonb_agg(
             jsonb_build_object(
               'id', pi.id,
-              'filename', pi.filename,
-              'mimeType', pi.mime_type,
-              'url', '/api/projects/' || p.id || '/images/' || pi.id
+                'filename', pi.filename,
+                'mimeType', pi.mime_type,
+                'isFront', pi.is_front,
+                'url', '/api/projects/' || p.id || '/images/' || pi.id
             )
-            ORDER BY pi.created_at
+              ORDER BY pi.is_front DESC, pi.created_at
           ) FILTER (WHERE pi.id IS NOT NULL),
           '[]'::jsonb
         ) AS images
@@ -139,9 +141,10 @@ export async function listProjectsWithPaginationAndPreview(
               'id', pi.id,
               'filename', pi.filename,
               'mimeType', pi.mime_type,
+              'isFront', pi.is_front,
               'url', '/api/projects/' || p.id || '/images/' || pi.id
             )
-            ORDER BY pi.created_at
+            ORDER BY pi.is_front DESC, pi.created_at
           ) FILTER (WHERE pi.id IS NOT NULL),
           '[]'::jsonb
         ) AS images,
@@ -153,10 +156,10 @@ export async function listProjectsWithPaginationAndPreview(
         WHERE project_id = p.id
       ) pic ON true
       LEFT JOIN LATERAL (
-        SELECT id, filename, mime_type, created_at
+        SELECT id, filename, mime_type, is_front, created_at
         FROM project_images
         WHERE project_id = p.id
-        ORDER BY created_at
+        ORDER BY is_front DESC, created_at
         LIMIT CASE WHEN pic.image_count <= $1 THEN pic.image_count ELSE $1 END
       ) pi ON true
       GROUP BY p.id, pic.image_count
