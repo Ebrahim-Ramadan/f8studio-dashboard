@@ -261,6 +261,7 @@ export function Dashboard({
   }
 
   function closeEditor() {
+    if (saving) return;
     if (!editor) return;
     editor.pendingFiles.forEach((item) => URL.revokeObjectURL(item.previewUrl));
     setEditor(null);
@@ -568,7 +569,7 @@ Loading...
       </div>
 
       {editor ? (
-        <div className="modal-backdrop" role="presentation" onClick={closeEditor}>
+        <div className="modal-backdrop" role="presentation" onClick={saving ? undefined : closeEditor}>
           <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <div>
@@ -577,7 +578,7 @@ Loading...
                 </div> */}
                 <h2>{editor.mode === "create" ? "Add project" : editor.name}</h2>
               </div>
-              <button className="btn btn-ghost" type="button" onClick={closeEditor}>
+              <button className="btn btn-ghost" type="button" onClick={closeEditor} disabled={saving}>
                 <X size={20} /> 
               </button>
             </div>
@@ -745,7 +746,7 @@ Loading...
               </div>
 
               <div className="form-actions">
-                <button className="btn btn-ghost" type="button" onClick={closeEditor}>
+                <button className="btn btn-ghost" type="button" onClick={closeEditor} disabled={saving}>
                   Cancel
                 </button>
                 <button className="btn btn-primary" type="submit" disabled={saving}>
