@@ -54,6 +54,14 @@ export type SubmissionsResponse = {
   totalPages: number;
 };
 
+export type HiringCandidate = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  createdAt: string;
+};
+
 export type ProjectsResponse = {
   projects: ProjectRecord[];
   total: number;
