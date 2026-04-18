@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, X, RefreshCcw, UploadCloud, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, X, RefreshCcw, UploadCloud, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { ProjectImage, ProjectRecord, ProjectsResponse } from "@/lib/types";
 import { compressImage } from "@/lib/image-compression";
 
@@ -315,16 +315,17 @@ export function Dashboard({
       isCompressing: true
     }));
 
-    // If creating a new project and there are no existing images, ensure one pending image
-    // becomes the front selection. If multiple pending images are present, pick one at random.
+    // If creating a new project and there are no existing images, do NOT auto-select
+    // a single uploaded image as the front. When multiple pending images are present,
+    // pick one at random to be the front; otherwise leave frontSelection null.
     const combinedPending = [...editor.pendingFiles, ...nextFiles];
     let nextFront = editor.frontSelection;
     if (editor.mode === "create" && editor.images.length === 0 && !editor.frontSelection) {
-      if (combinedPending.length === 1) {
-        nextFront = `pending:${combinedPending[0].id}`;
-      } else if (combinedPending.length > 1) {
+      if (combinedPending.length > 1) {
         const rand = Math.floor(Math.random() * combinedPending.length);
         nextFront = `pending:${combinedPending[rand].id}`;
+      } else {
+        nextFront = null;
       }
     }
 
@@ -848,7 +849,18 @@ Loading...
                   <p className="help">Add at least one image before saving.</p>
                 ) : null}
 
-                <div className="image-grid" style={{ marginTop: 12 }}>
+                <div
+                  className="image-grid"
+                  style={{
+                    marginTop: 12,
+                    display: "grid",
+                    gap: 12,
+                    gridTemplateColumns:
+                      (editor.images.length + editor.pendingFiles.length) === 1
+                        ? "repeat(3, minmax(0, 1fr))"
+                        : "repeat(auto-fill, minmax(200px, 1fr))"
+                  }}
+                >
                   {editor.images.map((image) => (
                     <div key={image.id} className="image-chip">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -860,7 +872,7 @@ Loading...
                         style={{
                           position: "absolute",
                           top: 8,
-                          right: 8,
+                          right: 48,
                           padding: "4px 6px",
                           borderRadius: 9999,
                           background:
@@ -874,7 +886,7 @@ Loading...
                           WebkitBackdropFilter: "blur(6px)"
                         }}
                       >
-                        ★
+                        <Star size={14} strokeWidth={2} />
                       </button>
                       <button
                         type="button"
@@ -889,10 +901,10 @@ Loading...
                           position: "absolute",
                           bottom: 10,
                           left: 10,
-                          fontSize: "0.75rem",
+                          fontSize: "0.65rem",
                           background: "rgba(8,17,31,0.9)",
                           borderRadius: "4px",
-                          padding: "4px 6px",
+                          padding: "2px 3px",
                           color: "#9cafcc"
                         }}
                       >
@@ -912,7 +924,7 @@ Loading...
                         style={{
                           position: "absolute",
                           top: 8,
-                          right: 8,
+                          right: 48,
                           padding: "4px 6px",
                           borderRadius: 999,
                           background: editor.frontSelection === `pending:${image.id}` ? "rgba(255,217,102,0.92)" : "rgba(255, 255, 255, 0.4)",
@@ -922,8 +934,8 @@ Loading...
                           backdropFilter: "blur(6px)",
                           WebkitBackdropFilter: "blur(6px)"
                         }}
-                      >
-                        ★
+                        >
+                        <Star size={14} strokeWidth={2} />
                       </button>
                       <button
                         type="button"
@@ -938,10 +950,10 @@ Loading...
                           position: "absolute",
                           bottom: 10,
                           left: 10,
-                          fontSize: "0.75rem",
+                          fontSize: "0.65rem",
                           background: "rgba(8,17,31,0.9)",
                           borderRadius: "4px",
-                          padding: "4px 6px",
+                          padding: "2px 3px",
                           color: image.isCompressing ? "#8bb8ff" : "#67d39b"
                         }}
                       >

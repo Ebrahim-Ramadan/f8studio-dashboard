@@ -528,7 +528,7 @@ html, body {
 .image-chip img {
   width: 100%;
   height: auto;
-  max-height: 140px;
+  max-height: 200px;
   object-fit: contain;
   object-position: center;
   display: block;
@@ -547,6 +547,17 @@ html, body {
   border: 1px solid rgba(255,255,255,0.04);
   color: #fff;
   cursor: pointer;
+  z-index: 6;
+  display: inline-grid;
+  place-items: center;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 1;
+}
+
+.image-chip button svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* Place up to two action buttons side-by-side in the top-right corner */
@@ -646,11 +657,11 @@ html, body {
   }
 
   .project-cover {
-    max-height: 140px;
+    max-height: 25rem;
   }
 
   .project-cover img {
-    height: 140px;
+    height: 25rem;
   }
 
   .toolbar {
