@@ -56,17 +56,78 @@ type CandidatesResponse = {
 export default function CandidatesList({ initialData }: { initialData: CandidatesResponse }) {
   const [data, setData] = useState<CandidatesResponse>(initialData);
   const [loading, setLoading] = useState(false);
+  const [submittedOrder, setSubmittedOrder] = useState<"desc" | "asc">("desc");
+  const [yearsOption, setYearsOption] = useState<string>("any");
+  const [currentSalarySort, setCurrentSalarySort] = useState<"none" | "asc" | "desc">("none");
+  const [expectedSalarySort, setExpectedSalarySort] = useState<"none" | "asc" | "desc">("none");
 
   useEffect(() => {
     setData(initialData);
   }, [initialData]);
 
-  async function loadPage(page: number) {
+  async function loadPage(page: number, overrides?: {
+    submittedOrder?: "asc" | "desc";
+    yearsOption?: string;
+    currentSalarySort?: "none" | "asc" | "desc";
+    expectedSalarySort?: "none" | "asc" | "desc";
+  }) {
     setLoading(true);
     try {
-      const res = await fetch(`/api/candidates?page=${page}&pageSize=${data.pageSize}`, { cache: "no-store" });
+      const params = new URLSearchParams();
+      params.set("page", String(page));
+      params.set("pageSize", String(data.pageSize));
+      const effectiveSubmittedOrder = overrides?.submittedOrder ?? submittedOrder;
+      const effectiveYearsOption = overrides?.yearsOption ?? yearsOption;
+      const effectiveCurrentSalarySort = overrides?.currentSalarySort ?? currentSalarySort;
+      const effectiveExpectedSalarySort = overrides?.expectedSalarySort ?? expectedSalarySort;
+
+      if (effectiveSubmittedOrder) params.set("submitted_order", effectiveSubmittedOrder);
+
+      // map yearsOption to min/max years
+      if (effectiveYearsOption && effectiveYearsOption !== "any") {
+        if (effectiveYearsOption.startsWith("lt")) {
+          const n = Number(effectiveYearsOption.replace("lt", ""));
+          // '<N' -> maxYears = N - 1
+          params.set("max_years", String(Math.max(0, n - 1)));
+        } else if (effectiveYearsOption.startsWith("gte")) {
+          const n = Number(effectiveYearsOption.replace("gte", ""));
+          params.set("min_years", String(n));
+        }
+      }
+
+      const res = await fetch(`/api/candidates?${params.toString()}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load candidates");
-      const json = (await res.json()) as CandidatesResponse;
+      let json = (await res.json()) as CandidatesResponse;
+
+      // Apply client-side salary sorting if requested
+      function parseSalary(s: string | null) {
+        if (!s) return NaN;
+        const num = Number(String(s).replace(/[^0-9.\-]/g, ""));
+        return Number.isFinite(num) ? num : NaN;
+      }
+
+      if (effectiveExpectedSalarySort !== "none") {
+        json.candidates = [...json.candidates].sort((a, b) => {
+          const av = parseSalary(a.expected_salary ?? null);
+          const bv = parseSalary(b.expected_salary ?? null);
+          if (Number.isNaN(av) && Number.isNaN(bv)) return 0;
+          if (Number.isNaN(av)) return 1;
+          if (Number.isNaN(bv)) return -1;
+          return effectiveExpectedSalarySort === "asc" ? av - bv : bv - av;
+        });
+      }
+
+      if (effectiveCurrentSalarySort !== "none") {
+        json.candidates = [...json.candidates].sort((a, b) => {
+          const av = parseSalary(a.current_salary ?? null);
+          const bv = parseSalary(b.current_salary ?? null);
+          if (Number.isNaN(av) && Number.isNaN(bv)) return 0;
+          if (Number.isNaN(av)) return 1;
+          if (Number.isNaN(bv)) return -1;
+          return effectiveCurrentSalarySort === "asc" ? av - bv : bv - av;
+        });
+      }
+
       setData(json);
     } catch (e) {
       // noop for now
@@ -75,11 +136,90 @@ export default function CandidatesList({ initialData }: { initialData: Candidate
     }
   }
 
+  function applyFilters() {
+    void loadPage(1);
+  }
+
   return (
     <section className="panel">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <h2>New candidates</h2>
         <div style={{ color: "#9cafcc" }}>{loading ? "Loading…" : `${data.total} total`}</div>
+      </div>
+
+      {/* Combined filter select (right-aligned) */}
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
+        <div style={{ color: "#9cafcc", fontSize: "0.9rem" }}>{loading ? "Applying…" : `${data.total} total`}</div>
+
+        <select
+          aria-label="Quick filters"
+          onChange={(e) => {
+            const v = e.target.value;
+            if (!v) return;
+            if (v === "clear") {
+              setSubmittedOrder("desc");
+              setYearsOption("any");
+              setCurrentSalarySort("none");
+              setExpectedSalarySort("none");
+              void loadPage(1, { submittedOrder: "desc", yearsOption: "any", currentSalarySort: "none", expectedSalarySort: "none" });
+              return;
+            }
+
+            const [type, val] = v.split(":");
+
+            if (type === "submitted") {
+              const order = val === "asc" ? "asc" : "desc";
+              setSubmittedOrder(order);
+              void loadPage(1, { submittedOrder: order });
+              return;
+            }
+
+            if (type === "years") {
+              setYearsOption(val);
+              void loadPage(1, { yearsOption: val });
+              return;
+            }
+
+            if (type === "curSalary") {
+              setCurrentSalarySort(val === "asc" ? "asc" : "desc");
+              void loadPage(1, { currentSalarySort: val as any });
+              return;
+            }
+
+            if (type === "expSalary") {
+              setExpectedSalarySort(val === "asc" ? "asc" : "desc");
+              void loadPage(1, { expectedSalarySort: val as any });
+              return;
+            }
+          }}
+          defaultValue=""
+          style={{ marginLeft: "auto", minWidth: 220, padding: "8px 10px", borderRadius: 10, background: "rgb(70, 79, 83)", color: "white", border: "1px solid rgba(255,255,255,0.04)" }}
+        >
+          <option value="">Quick filters — select...</option>
+          <optgroup label="Submitted">
+            <option value="submitted:desc">Recent → Old</option>
+            <option value="submitted:asc">Old → Recent</option>
+          </optgroup>
+          <optgroup label="Years of experience">
+            <option value="years:lt1">&lt;1</option>
+            <option value="years:lt2">&lt;2</option>
+            <option value="years:lt3">&lt;3</option>
+            <option value="years:lt4">&lt;4</option>
+            <option value="years:lt5">&lt;5</option>
+            <option value="years:gte5">≥5</option>
+          </optgroup>
+          <optgroup label="Current salary">
+            <option value="curSalary:desc">Large → Small</option>
+            <option value="curSalary:asc">Small → Large</option>
+          </optgroup>
+          <optgroup label="Expected salary">
+            <option value="expSalary:desc">Large → Small</option>
+            <option value="expSalary:asc">Small → Large</option>
+          </optgroup>
+          <optgroup label="Actions">
+            <option value="clear">Reset filters</option>
+          </optgroup>
+        </select>
       </div>
 
       <Table>

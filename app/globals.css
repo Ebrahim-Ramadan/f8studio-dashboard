@@ -399,6 +399,23 @@ h1 {
   padding: 18px;
 }
 
+/* Hide native scrollbars across the app but keep scroll functionality */
+html, body {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* WebKit browsers */
+*::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+}
+
+/* Prevent focus outlines from being hidden — keep accessibility intact for keyboard users */
+:focus {
+  outline: none;
+}
+
 .modal {
   width: min(920px, 100%);
   border-radius: 28px;

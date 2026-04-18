@@ -41,13 +41,51 @@ export type CandidatesResponse = {
   totalPages: number;
 };
 
+export type CandidatesFilters = {
+  submitted_from?: string | null;
+  submitted_to?: string | null;
+  min_years?: number | null;
+  max_years?: number | null;
+  submitted_order?: "asc" | "desc" | null;
+};
+
 export async function listCandidatesWithPagination(
   page: number = 1,
-  pageSize: number = 10
+  pageSize: number = 10,
+  filters?: CandidatesFilters
 ): Promise<CandidatesResponse> {
   const validPage = Math.max(1, Math.floor(page));
   const validPageSize = Math.min(100, Math.max(1, Math.floor(pageSize)));
   const offset = (validPage - 1) * validPageSize;
+
+  const whereClauses: string[] = [];
+  const params: unknown[] = [];
+
+  if (filters) {
+    if (filters.submitted_from) {
+      params.push(filters.submitted_from);
+      whereClauses.push(`created_at >= $${params.length}`);
+    }
+    if (filters.submitted_to) {
+      params.push(filters.submitted_to);
+      whereClauses.push(`created_at <= $${params.length}`);
+    }
+    if (typeof filters.min_years === "number") {
+      params.push(filters.min_years);
+      whereClauses.push(`years_experience >= $${params.length}`);
+    }
+    if (typeof filters.max_years === "number") {
+      params.push(filters.max_years);
+      whereClauses.push(`years_experience <= $${params.length}`);
+    }
+  }
+
+  // push limit and offset as last params
+  params.push(validPageSize, offset);
+
+  const whereSQL = whereClauses.length ? `WHERE ${whereClauses.join(" AND ")}` : "";
+
+  const orderSQL = filters?.submitted_order === "asc" ? "created_at ASC" : "created_at DESC";
 
   const result = await query<Record<string, unknown> & { total_count: number }>(
     `
@@ -84,10 +122,11 @@ export async function listCandidatesWithPagination(
         created_at,
         COUNT(*) OVER() AS total_count
       FROM hiring_candidates
-      ORDER BY created_at DESC
-      LIMIT $1 OFFSET $2
+      ${whereSQL}
+      ORDER BY ${orderSQL}
+      LIMIT $${params.length - 1} OFFSET $${params.length}
     `,
-    [validPageSize, offset]
+    params
   );
 
   const totalCount = result.rows.length > 0 ? result.rows[0].total_count : 0;
