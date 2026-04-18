@@ -853,14 +853,7 @@ Loading...
                     <div key={image.id} className="image-chip">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={image.url} alt={image.filename} loading="lazy" decoding="async" />
-                      <button
-                        type="button"
-                        onClick={() => removeExistingImage(image.id)}
-                        aria-label={`Remove ${image.filename}`}
-                      >
-                        ×
-                      </button>
-                      <button
+                     <button
                         type="button"
                         onClick={() => setFrontSelection("existing", image.id)}
                         aria-label={`Set ${image.filename} as front`}
@@ -883,6 +876,14 @@ Loading...
                       >
                         ★
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => removeExistingImage(image.id)}
+                        aria-label={`Remove ${image.filename}`}
+                      >
+                        ×
+                      </button>
+                      
                       <div
                         style={{
                           position: "absolute",
@@ -903,14 +904,7 @@ Loading...
                     <div key={image.id} className="image-chip">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={image.previewUrl} alt={image.file.name} />
-                      <button
-                        type="button"
-                        onClick={() => removeDraftImage(image.id)}
-                        aria-label={`Remove ${image.file.name}`}
-                        disabled={image.isCompressing}
-                      >
-                        {image.isCompressing ? "⟳" : "×"}
-                      </button>
+                      
                       <button
                         type="button"
                         onClick={() => setFrontSelection("pending", image.id)}
@@ -930,6 +924,14 @@ Loading...
                         }}
                       >
                         ★
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeDraftImage(image.id)}
+                        aria-label={`Remove ${image.file.name}`}
+                        disabled={image.isCompressing}
+                      >
+                        {image.isCompressing ? "⟳" : "×"}
                       </button>
                       <div
                         style={{
