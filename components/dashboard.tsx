@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, X, RefreshCcw, UploadCloud, ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, X, RefreshCcw, UploadCloud, ChevronLeft, ChevronRight, Star, Loader } from "lucide-react";
+import { toast } from "sonner";
 import { ProjectImage, ProjectRecord, ProjectsResponse } from "@/lib/types";
 import { compressImage } from "@/lib/image-compression";
 
@@ -87,7 +88,6 @@ export function Dashboard({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loadingEditorProjectId, setLoadingEditorProjectId] = useState<string | null>(null);
   const [adminActionLoading, setAdminActionLoading] = useState(false);
-  const [toast, setToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
   const projects = data?.projects ?? [];
   const totalPages = data?.totalPages ?? 1;
@@ -114,10 +114,7 @@ export function Dashboard({
         const json = (await response.json()) as ProjectsResponse;
         setData(json);
       } catch (error) {
-        setToast({
-          kind: "error",
-          message: error instanceof Error ? error.message : "Unable to load projects."
-        });
+        toast.error(error instanceof Error ? error.message : "Unable to load projects.");
       } finally {
         setLoading(false);
       }
@@ -126,12 +123,7 @@ export function Dashboard({
     void loadPage();
   }, [currentPage]);
 
-  useEffect(() => {
-    if (!toast) return;
-
-    const timer = window.setTimeout(() => setToast(null), 4000);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
+  
 
   const totalImages = useMemo(
     () => projects.reduce((count, project) => count + project.imageCount, 0),
@@ -162,10 +154,7 @@ export function Dashboard({
       const json = (await response.json()) as ProjectsResponse;
       setData(json);
     } catch (error) {
-      setToast({
-        kind: "error",
-        message: error instanceof Error ? error.message : "Unable to load projects."
-      });
+        toast.error(error instanceof Error ? error.message : "Unable to load projects.");
     } finally {
       setLoading(false);
     }
@@ -176,7 +165,7 @@ export function Dashboard({
       setRefreshing(true);
       setCurrentPage(1);
       await loadProjects(1);
-      setToast({ kind: "success", message: "Projects refreshed." });
+        toast.success("Projects refreshed.");
     } finally {
       setRefreshing(false);
     }
@@ -229,10 +218,7 @@ export function Dashboard({
         prefetchedImageUrls: prefetched
       });
     } catch (error) {
-      setToast({
-        kind: "error",
-        message: error instanceof Error ? error.message : "Unable to load project details."
-      });
+        toast.error(error instanceof Error ? error.message : "Unable to load project details.");
     } finally {
       setLoadingEditorProjectId(null);
     }
@@ -356,10 +342,9 @@ export function Dashboard({
           };
         });
       } catch (error) {
-        setToast({
-          kind: "error",
-          message: `Failed to compress ${draftImage.file.name}: ${error instanceof Error ? error.message : "Unknown error"}`
-        });
+        toast.error(
+          `Failed to compress ${draftImage.file.name}: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
       }
     }
   }
@@ -544,15 +529,9 @@ export function Dashboard({
       });
       setEditor(null);
       await loadProjects(currentPage);
-      setToast({
-        kind: "success",
-        message: editor.mode === "create" ? "Project created." : "Project updated."
-      });
+        toast.success(editor.mode === "create" ? "Project created." : "Project updated.");
     } catch (error) {
-      setToast({
-        kind: "error",
-        message: error instanceof Error ? error.message : "Unable to save project."
-      });
+        toast.error(error instanceof Error ? error.message : "Unable to save project.");
     } finally {
       setSaving(false);
     }
@@ -564,12 +543,9 @@ export function Dashboard({
       const response = await fetch(`/api/projects/${id}`, { method: "DELETE" });
       if (!response.ok) throw new Error("Unable to delete project.");
       await loadProjects(currentPage);
-      setToast({ kind: "success", message: "Project deleted." });
+        toast.success("Project deleted.");
     } catch (error) {
-      setToast({
-        kind: "error",
-        message: error instanceof Error ? error.message : "Unable to delete project."
-      });
+        toast.error(error instanceof Error ? error.message : "Unable to delete project.");
     } finally {
       setDeletingId(null);
     }
@@ -599,11 +575,16 @@ export function Dashboard({
           {/* <a href="/submissions" className="btn btn-ghost" style={{ textDecoration: 'none' }}>
             📬 Submissions
           </a> */}
-          <button className="btn btn-ghost" onClick={refreshProjects} type="button">
-            <RefreshCcw size={16} /> {refreshing ? "Refreshing" : "Refresh"}
+          <button className="btn btn-ghost" onClick={refreshProjects} type="button" disabled={refreshing}>
+            {!refreshing ?
+           <RefreshCcw size={20} />
+           :
+           <Loader size={20} className="animate-spin" />
+          }
+            
           </button>
           <button className="btn btn-primary" onClick={requestCreate} type="button">
-            <Plus size={16} /> New project
+            <Plus size={20} />
           </button>
         </div>
       </div>
@@ -1047,7 +1028,6 @@ Loading...
         </div>
       ) : null}
 
-      {toast ? <div className={`toast ${toast.kind}`}>{toast.message}</div> : null}
     </section>
   );
 }

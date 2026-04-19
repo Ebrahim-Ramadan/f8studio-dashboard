@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import HeroNav from "@/components/heroNav";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "F8 Office Admin",
@@ -19,6 +20,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <Toaster />
+
       <body>
         <section className="hero">
           <HeroNav />
